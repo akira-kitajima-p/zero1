@@ -31,6 +31,17 @@ def forward(network, x):
     y = identify(a3)
     return y
 
+def softmax(a):
+    c = np.max(a)
+    # e^(a-c)乗
+    exp_a = np.exp(a - c)
+    # e^(a0) ~ e^(an)までの総和
+    sum_exp_a = np.exp(exp_a)
+    # 全体を1としたときのaの値の大きさ
+    y = exp_a / sum_exp_a
+
+    return y
+
 network = init_network()
 x = np.array([1.0, 0.5])
 y = forward(network, x)
