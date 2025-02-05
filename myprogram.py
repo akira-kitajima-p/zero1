@@ -10,17 +10,6 @@ def sigmoid(x):
 def identify(x):
     return x
 
-def forward(network, x):
-    w1, w2, w3 = network["W1"], network["W2"], network["W3"]
-    b1, b2, b3 = network["b1"], network["b2"], network["b3"]
-    a1 = np.dot(x, w1) + b1
-    z1 = sigmoid(a1)
-    a2 = np.dot(z1, w2) + b2
-    z2 = sigmoid(a2)
-    a3 = np.dot(z2, w3) + b3
-    y = identify(a3)
-    return y
-
 def softmax(a):
     c = np.max(a)
     # e^(a-c)乗
@@ -40,63 +29,66 @@ def get_data():
     (x_train, t_train), (x_test, t_test) = load_mnist(flatten=True, normalize=False)
     return x_test, t_test
 
-def init_network():
-    network = {}
-    network["W1"] = np.array([[0.1, 0.3, 0.5],
-                              [0.2, 0.4, 0.6]])
-    network["W2"] = ([[0.1, 0.4],
-                      [0.2, 0.5],
-                      [0.3, 0.6]])
-    network["W3"] = np.array([[0.1, 0.3],
-                              [0.2, 0.4]])
-    network["b1"] = np.array([0.1, 0.2, 0.3])
-    network["b2"] = np.array([0.1, 0.2])
-    network["b3"] = np.array([0.1, 0.2])
-    return network
-
-def mean_squared_error(y,t):
-    return 0.5 * np.sum((y-t)**2)
-
 def cross_entropy_error(y,t):
-    delta = le-7 # log(0)を防ぐため
-    reutrn -np.sum(t * np.log(y + delta))
+    delta = 1e-7 # log(0)を防ぐため
+    return -np.sum(t * np.log(y + delta))
 
 # f(x)の微分を求める
 def numerical_diff(f,x):
-    h = le-4    # Doubleの誤差の問題で、あまりに小さい値にすると丸められてしまう。
+    h = 1e-4    # Doubleの誤差の問題で、あまりに小さい値にすると丸められてしまう。
     # 1. f(x+h)-f(x)で求まる傾きは(x+h)とx間の傾きになってしまう。(本当はxの地点での傾きを求めたく、厳密にはhを0に限りなく近づける必要があるが、そうできない為)
     # 2. (x+h)と(x-h)間の傾きを求めることで、xでの傾きを少ない誤差で求められるらしい
     return (f(x+h) - f(x-h)) / (2*h) 
 
 
-# network = init_network()
-# x = np.array([1.0, 0.5])
-# y = forward(network, x)
-# print(y)
+# 関数fの重み配列がxに格納されており、x[idx]の偏微分をgrad[idx]に格納して返す
+def numerical_gradient(f, x):
+    h = 1e-4 # 0.0001
+    grad = np.zeros_like(x)
+    
+    # flags=['multi_index']を渡すことで、xのインデックスをタプル形式で順番に返すイテレータを生成できる
+    it = np.nditer(x, flags=['multi_index'], op_flags=['readwrite'])
+    while not it.finished:
+        idx = it.multi_index
+        tmp_val = x[idx]
+        x[idx] = tmp_val + h
+        fxh1 = f(x) # f(x+h)
+        
+        x[idx] = tmp_val - h 
+        fxh2 = f(x) # f(x-h)
+        grad[idx] = (fxh1 - fxh2) / (2*h)
+        
+        x[idx] = tmp_val # 値を元に戻す
+        it.iternext()
+        
+    return grad
 
-(x_train, t_train), (x_test, t_test) = load_mnist(flatten=True, normalize=False)
+class simpleNet:
+    def __init__(self):
+        self.W = np.random.randn(2, 3) # 2×3の中間層を生成する(ガウス分布で初期化)
+    
+    def predict(self, x):
+        return np.dot(x, self.W) # xは2個の入力, 中間層との積を出力して3個の要素を得る
+    
+    # 損失を求める。0に近いほど損失が少ない
+    def loss(self, x, t):
+        z = self.predict(x)     # xに対する予想結果
+        y = softmax(z)          # 結果の総和を1にする
+        loss = cross_entropy_error(y, t) # 正解データtをもとに損失を求める
+        return loss
 
-train_size = x_train.shape[0]
-batch_size = 3
-batch_mask = np.random.choice(train_size, batch_size)
+net = simpleNet()
 
-print(batch_mask)
+x = np.array([0.6, 0.9])
+p = net.predict(x)
+print(softmax(p))
 
-x_batch = x_train[batch_mask]
-t_batch = t_train[batch_mask]
+t = np.array([0,0,1]) # 正解ラベル
+print(net.loss(x, t))
 
-print(x_batch[0].size)
+# 正解ラベルtに対する損失の勾配(≒重みwの偏微分の結果)
+def f(W):
+    return net.loss(x, t)
 
-y = np.array([[0, 0.2, 0.2 ,0.6, 0, 0, 0, 0, 0, 0], [0.1, 0.2, 0.2 ,0.4, 0, 0, 0, 0, 0, 0]])
-print(y.ndim)
-t = np.array(np.array([0, 0.2, 0.2 ,0.6, 0, 0, 0, 0, 0, 0]))
-
-print(np.arange(10))
-# print(y[np.arange(10), y])
-
-y = np.array([[0, 0.2, 0.2 ,0.6, 0, 0, 0, 0, 0, 0], [0.1, 0.2, 0.2 ,0.4, 0, 0, 0, 0, 0, 0]])
-print(y[[0,1], 3])
-
-# batch_size = 1
-# print(y[np.arange(batch_size), 3])
-# print(y[np.arange(batch_size), t])
+dW = numerical_gradient(f, net.W)
+print(dW)

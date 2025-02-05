@@ -13,7 +13,7 @@ network = TwoLayerNet(input_size=784, hidden_size=50, output_size=10)
 
 iters_num = 10000  # 繰り返しの回数を適宜設定する
 train_size = x_train.shape[0]
-batch_size = 100
+batch_size = 100 # mnistの60000枚のデータからランダムに100枚ずつ学習する
 learning_rate = 0.1
 
 train_loss_list = []
@@ -27,11 +27,11 @@ for i in range(iters_num):
     x_batch = x_train[batch_mask]
     t_batch = t_train[batch_mask]
     
-    # 勾配の計算
-    #grad = network.numerical_gradient(x_batch, t_batch)
-    grad = network.gradient(x_batch, t_batch)
+    # 勾配の計算, 推論→損失計算→勾配計算まですべてここで行う
+    grad = network.numerical_gradient(x_batch, t_batch)
+    #grad = network.gradient(x_batch, t_batch)
     
-    # パラメータの更新
+    # 勾配を元にパラメータの更新を行う
     for key in ('W1', 'b1', 'W2', 'b2'):
         network.params[key] -= learning_rate * grad[key]
     
